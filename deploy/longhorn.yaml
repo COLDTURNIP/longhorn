@@ -18,6 +18,7 @@ description: "Ensure Longhorn pods have the highest priority to prevent any unex
 globalDefault: false
 preemptionPolicy: PreemptLowerPriority
 value: 1000000000
+
 ---
 # Source: longhorn/templates/network-policies/backing-image-data-source-network-policy.yaml
 apiVersion: networking.k8s.io/v1
@@ -45,6 +46,7 @@ spec:
     - podSelector:
         matchLabels:
           longhorn.io/component: backing-image-data-source
+
 ---
 # Source: longhorn/templates/network-policies/backing-image-manager-network-policy.yaml
 apiVersion: networking.k8s.io/v1
@@ -72,6 +74,7 @@ spec:
     - podSelector:
         matchLabels:
           longhorn.io/component: backing-image-data-source
+
 ---
 # Source: longhorn/templates/network-policies/instance-manager-networking.yaml
 apiVersion: networking.k8s.io/v1
@@ -99,6 +102,7 @@ spec:
     - podSelector:
         matchLabels:
           longhorn.io/component: backing-image-data-source
+
 ---
 # Source: longhorn/templates/network-policies/manager-network-policy.yaml
 apiVersion: networking.k8s.io/v1
@@ -134,6 +138,7 @@ spec:
     - podSelector:
         matchLabels:
           app: longhorn-driver-deployer
+
 ---
 # Source: longhorn/templates/network-policies/recovery-backend-network-policy.yaml
 apiVersion: networking.k8s.io/v1
@@ -155,6 +160,7 @@ spec:
     ports:
     - protocol: TCP
       port: 9503
+
 ---
 # Source: longhorn/templates/network-policies/webhook-network-policy.yaml
 apiVersion: networking.k8s.io/v1
@@ -174,6 +180,7 @@ spec:
       port: 9501
     - protocol: TCP
       port: 9502
+
 ---
 # Source: longhorn/templates/serviceaccount.yaml
 apiVersion: v1
@@ -220,6 +227,7 @@ metadata:
     app.kubernetes.io/version: v1.12.0-dev
 data:
   default-resource.yaml: |-
+
 ---
 # Source: longhorn/templates/default-setting.yaml
 apiVersion: v1
@@ -235,6 +243,7 @@ data:
   default-setting.yaml: |-
     priority-class: "longhorn-critical"
     disable-revision-counter: "{\"v1\":\"true\"}"
+
 ---
 # Source: longhorn/templates/storageclass.yaml
 apiVersion: v1
@@ -268,6 +277,7 @@ data:
       disableRevisionCounter: "true"
       dataEngine: "v1"
       backupTargetName: "default"
+
 ---
 # Source: longhorn/templates/crds.yaml
 # Generated crds.yaml from github.com/longhorn/longhorn-manager/k8s/pkg/apis and the crds.yaml will be copied to longhorn/longhorn chart/templates and cannot be directly used by kubectl apply.
@@ -1372,6 +1382,166 @@ spec:
               storageClassName:
                 description: the storage class name of pv/pvc binding with the volume.
                 type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+# Source: longhorn/templates/crds.yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.19.0
+  labels:
+    app.kubernetes.io/name: longhorn
+    app.kubernetes.io/instance: longhorn
+    app.kubernetes.io/version: v1.12.0-dev
+    longhorn-manager: ""
+  name: diskschedules.longhorn.io
+spec:
+  group: longhorn.io
+  names:
+    kind: DiskSchedule
+    listKind: DiskScheduleList
+    plural: diskschedules
+    shortNames:
+    - lhds
+    singular: diskschedule
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: The node of the disk
+      jsonPath: .spec.nodeID
+      name: Node
+      type: string
+    - description: The disk that is serving
+      jsonPath: .spec.name
+      name: Disk
+      type: string
+    name: v1beta2
+    schema:
+      openAPIV3Schema:
+        description: DiskSchedule is where Longhorn stores disk scheduling status.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: DiskScheduleSpec defines the desired state of the Longhorn
+              disk schedule
+            properties:
+              backingImages:
+                additionalProperties:
+                  format: int64
+                  type: integer
+                description: Scheduling requests for backing images
+                type: object
+              name:
+                description: Disk name from node CR
+                type: string
+                x-kubernetes-validations:
+                - message: Disk name is immutable
+                  rule: self == oldSelf
+              nodeID:
+                description: Node ID that the disk locates
+                type: string
+                x-kubernetes-validations:
+                - message: NodeID is immutable
+                  rule: self == oldSelf
+              replicas:
+                additionalProperties:
+                  format: int64
+                  type: integer
+                description: Scheduling requests for volume replicas
+                type: object
+            required:
+            - name
+            - nodeID
+            type: object
+          status:
+            description: DiskScheduleStatus defines the observed state of the Longhorn
+              disk schedule
+            properties:
+              backingImages:
+                additionalProperties:
+                  properties:
+                    scheduledSize:
+                      description: Scheduled size
+                      format: int64
+                      type: integer
+                    state:
+                      description: Scheduled state
+                      type: string
+                  required:
+                  - state
+                  type: object
+                description: Scheduled status of backing images
+                type: object
+              conditions:
+                items:
+                  properties:
+                    lastProbeTime:
+                      description: Last time we probed the condition.
+                      type: string
+                    lastTransitionTime:
+                      description: Last time the condition transitioned from one status
+                        to another.
+                      type: string
+                    message:
+                      description: Human-readable message indicating details about
+                        last transition.
+                      type: string
+                    reason:
+                      description: Unique, one-word, CamelCase reason for the condition's
+                        last transition.
+                      type: string
+                    status:
+                      description: |-
+                        Status is the status of the condition.
+                        Can be True, False, Unknown.
+                      type: string
+                    type:
+                      description: Type is the type of the condition.
+                      type: string
+                  type: object
+                nullable: true
+                type: array
+              replicas:
+                additionalProperties:
+                  properties:
+                    scheduledSize:
+                      description: Scheduled size
+                      format: int64
+                      type: integer
+                    state:
+                      description: Scheduled state
+                      type: string
+                  required:
+                  - state
+                  type: object
+                description: Scheduled status of volume replicas
+                type: object
+              storageScheduled:
+                description: Sum of successfully scheduled storage
+                format: int64
+                type: integer
             type: object
         type: object
     served: true
@@ -2978,12 +3148,14 @@ spec:
                       additionalProperties:
                         format: int64
                         type: integer
+                      description: ScheduledBackingImage is moved to DiskSchedule
                       nullable: true
                       type: object
                     scheduledReplica:
                       additionalProperties:
                         format: int64
                         type: integer
+                      description: ScheduledReplica is moved to DiskSchedule
                       nullable: true
                       type: object
                     storageAvailable:
@@ -2993,6 +3165,7 @@ spec:
                       format: int64
                       type: integer
                     storageScheduled:
+                      description: StorageScheduled is moved to DiskSchedule
                       format: int64
                       type: integer
                   type: object
@@ -5259,6 +5432,7 @@ spec:
     storage: true
     subresources:
       status: {}
+
 ---
 # Source: longhorn/templates/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -5312,6 +5486,7 @@ rules:
               "sharemanagers", "sharemanagers/status", "backingimages", "backingimages/status",
               "backingimagemanagers", "backingimagemanagers/status", "backingimagedatasources", "backingimagedatasources/status",
               "backuptargets", "backuptargets/status", "backupvolumes", "backupvolumes/status", "backups", "backups/status",
+              "diskschedules", "diskschedules/status",
               "recurringjobs", "recurringjobs/status", "orphans", "orphans/status", "snapshots", "snapshots/status",
               "supportbundles", "supportbundles/status", "systembackups", "systembackups/status", "systemrestores", "systemrestores/status",
               "volumeattachments", "volumeattachments/status", "backupbackingimages", "backupbackingimages/status",
@@ -5338,6 +5513,7 @@ rules:
 - apiGroups: ["rbac.authorization.k8s.io"]
   resources: ["clusterrolebindings", "clusterroles"]
   verbs: ["*"]
+
 ---
 # Source: longhorn/templates/clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -5374,6 +5550,7 @@ subjects:
 - kind: ServiceAccount
   name: longhorn-support-bundle
   namespace: longhorn-system
+
 ---
 # Source: longhorn/templates/role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -5407,6 +5584,7 @@ rules:
 - apiGroups: ["discovery.k8s.io"]
   resources: ["endpointslices"]
   verbs: ["*"]
+
 ---
 # Source: longhorn/templates/rolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -5422,6 +5600,7 @@ subjects:
 - kind: ServiceAccount
   name: longhorn-service-account
   namespace: longhorn-system
+
 ---
 # Source: longhorn/templates/daemonset-sa.yaml
 apiVersion: v1
@@ -5442,6 +5621,7 @@ spec:
   - name: manager
     port: 9500
     targetPort: manager
+
 ---
 # Source: longhorn/templates/deployment-ui.yaml
 kind: Service
@@ -5463,6 +5643,7 @@ spec:
     port: 80
     targetPort: http
     nodePort: null
+
 ---
 # Source: longhorn/templates/services.yaml
 apiVersion: v1
@@ -5503,6 +5684,7 @@ spec:
   - name: recovery-backend
     port: 9503
     targetPort: recov-backend
+
 ---
 # Source: longhorn/templates/daemonset-sa.yaml
 apiVersion: apps/v1
@@ -5704,6 +5886,7 @@ spec:
       serviceAccountName: longhorn-service-account
       securityContext:
         runAsUser: 0
+
 ---
 # Source: longhorn/templates/deployment-ui.yaml
 apiVersion: apps/v1
