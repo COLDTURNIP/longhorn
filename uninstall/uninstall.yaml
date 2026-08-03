@@ -74,6 +74,7 @@ rules:
   - backups
   - backuptargets
   - backupvolumes
+  - diskschedules
   - enginefrontends
   - engineimages
   - engines
